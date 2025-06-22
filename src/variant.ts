@@ -18,6 +18,31 @@
  */
 export type VariantValue = string | string[];
 
+export class VariantResult {
+  public value: VariantValue;
+
+  constructor(value: VariantValue) {
+    if (Array.isArray(value)) {
+      this.value = value;
+    } else {
+      this.value = value.split(" ");
+    }
+  }
+
+  get length() {
+    if (Array.isArray(this.value)) {
+      return this.value.length;
+    }
+    return 1;
+  }
+
+  toString() {
+    if (Array.isArray(this.value)) {
+      return this.value.join(" ");
+    }
+    return this.value;
+  }
+}
 /**
  * A Variant is a single variant of a package.
  *
@@ -32,31 +57,40 @@ export type VariantValue = string | string[];
  * variant.compile();
  * ```
  */
-export class Variant extends Map<string, VariantValue> {
+export class Variant {
+  children = new Map<string, VariantValue>();
+
   constructor(obj: Record<string, VariantValue>) {
-    super();
     for (const key in obj) {
-      this.set(key, obj[key]);
+      this.children.set(key, obj[key]);
     }
   }
 
-  compile(key?: string): string {
-    if (key) {
-      const value = this.get(key);
-      if (value) {
-        if (Array.isArray(value)) {
-          return value.join(" ");
-        }
-        return value;
-      }
-    }
+  compile(key?: string): VariantResult {
+    /**
+     * `key` did not reference a valid variant, so we need to check if we
+     * can use a default.
+     */
+    if (this.children.has("default")) {
+      const value = this.children.get("default");
 
-    if (this.has("default")) {
-      const value = this.get("default");
-      if (Array.isArray(value)) {
-        return value.join(" ");
+      /**
+       * The default value is a string, but it may be a key to another variant.
+       *
+       * If it is, we need to return the value of that variant.
+       * If it is not, we need to return the value of the default variant.
+       */
+      if (typeof value === "string") {
+        if (this.children.has(value)) {
+          return new VariantResult(this.children.get(value));
+        }
+
+        /**
+         * The default value does not reference another variant,
+         * so we can return it directly.
+         */
+        return new VariantResult(value);
       }
-      return value;
     }
   }
 }

@@ -1,36 +1,76 @@
-import { describe, expect, test } from "vitest";
-import { VariantSet } from "./set";
+import { test } from "vitest";
+import { StyleSet } from "./set";
 
-const variants = new VariantSet({
-  outline: {
-    withDefault: {
-      sm: "small",
-      default: "small"
+test("defaults", () => {
+  const styleset = new StyleSet({
+    sm: {
+      root: {
+        outline: [
+          "border",
+          "border-[color:var(--color-invert-light,theme(colors.gray.900))]",
+          "dark:border-[color:var(--color-invert-dark,var(--border))]",
+          "rounded-md",
+        ],
+      },
     },
-    withoutDefault: {
-      sm: "small"
-    },
-    arrayWithDefault: {
-      sm: ["small", "medium"],
-      default: "small"
-    },
-    arrayWithoutDefault: {
-      sm: ["small", "medium"]
-    }
-  }
-});
-
-describe.each([
-  // Ensure that the default key is used if not specified:
-  { args: { outline: { withDefault: "sm", withoutDefault: "sm" } }, expected: "small small" },
-  // Ensure that default is used when not specified:
-  { args: { outline: { withDefault: "sm" } }, expected: "small" },
-  // Ensure that array values are joined with a space:
-  { args: { outline: { arrayWithDefault: "sm" } }, expected: "small medium" },
-  // Ensure that array values are joined with a space:
-  { args: { outline: { arrayWithoutDefault: "sm" } }, expected: "small medium" }
-])("Package.compile($args) => $expected", ({ args, expected }) => {
-  test("compile", () => {
-    expect(variants.compile(args)).toBe(expected);
   });
+  console.log(styleset.search("sm.root.outline"));
+  // expect(styleset.packages.get("sm").compile("root")).toHaveLength(1);
+
+  // expect(styleset.packages.get("outline").compile()).toBe("");
+  // expect(styleset.packages.get("outline").compile("")).toBe("");
+  // expect(styleset.packages.get("outline").compile("border")).toBe("small");
+  // expect(styleset.packages.get("outline").compile("border", "")).toBe("small");
+  // expect(styleset.packages.get("outline").compile("border", "spacing")).toBe(
+  //   "small custom"
+  // );
+  // expect(
+  //   styleset.packages.get("outline").compile("border.sm", "spacing.bad")
+  // ).toBe("small custom");
+
+  // expect(styleset.compile()).toBe("small custom");
+  // expect(styleset.compile({ outline: { exists: "foo" } })).toBe("small");
+  // expect(styleset.compile({ outline: { bad: "404" } })).toBe("");
+  // expect(styleset.compile({ outline: null })).toBe("custom");
+  // expect(styleset.compile({ outline: { doesNotExist: null } })).toBe("");
+  // expect(styleset.compile({ outline: { doesNotExist: "foo" } })).toBe("custom");
 });
+
+// test("defaults", () => {
+//   const styleset = new StyleSet({
+//     outline: {
+//       border: {
+//         sm: ["a", "b"],
+//         default: "sm",
+//       },
+//       spacing: {
+//         sm: "foo bar",
+//         default: "c d",
+//       },
+//     },
+//   });
+
+//   expect(
+//     styleset.packages.get("outline").compile("border", "spacing")
+//   ).toHaveLength(2);
+//   expect(
+//     styleset.packages.get("outline").compile("border", "spacing").toString()
+//   ).toBe("a b c d");
+//   // expect(styleset.packages.get("outline").compile()).toBe("");
+//   // expect(styleset.packages.get("outline").compile("")).toBe("");
+//   // expect(styleset.packages.get("outline").compile("border")).toBe("small");
+//   // expect(styleset.packages.get("outline").compile("border", "")).toBe("small");
+//   // expect(styleset.packages.get("outline").compile("border", "spacing")).toBe(
+//   //   "small custom"
+//   // );
+//   // expect(
+//   //   styleset.packages.get("outline").compile("border.sm", "spacing.bad")
+//   // ).toBe("small custom");
+
+//   // expect(styleset.compile()).toBe("small custom");
+//   // expect(styleset.compile({ outline: { exists: "foo" } })).toBe("small");
+//   // expect(styleset.compile({ outline: { bad: "404" } })).toBe("");
+//   // expect(styleset.compile({ outline: null })).toBe("custom");
+//   // expect(styleset.compile({ outline: { doesNotExist: null } })).toBe("");
+//   // expect(styleset.compile({ outline: { doesNotExist: "foo" } })).toBe("custom");
+// });

@@ -1,4 +1,6 @@
-import { Variant, type VariantValue } from "./variant";
+import { HierarchicalContainer } from "@mateothegreat/ts-kit";
+import { path } from "./util";
+import { Variant, VariantResult, type VariantValue } from "./variant";
 
 /**
  * A Package is a collection of variants.
@@ -34,11 +36,12 @@ export class Package<
     Record<string, VariantValue>
   >
 > {
-  variants = new Map<string, Variant>();
+  container: HierarchicalContainer<Variant>;
 
   constructor(v: T) {
+    this.container = new HierarchicalContainer<Variant>();
     for (const key in v) {
-      this.variants.set(key, new Variant(v[key]));
+      this.container.add(null, new Variant(v[key]));
     }
   }
 
@@ -81,26 +84,46 @@ export class Package<
    * to use for each (from `args` or the variant's "default"), and compiles their values
    * into a single space-separated string.
    */
-  compile(args?: Partial<Record<keyof T, string>>) {
-    const classes: VariantValue[] = [];
+  compile(...packageNames: string[]): PackageResult {
+    const matches: VariantValue[] = [];
+    for (const search of packageNames) {
+      const p = path(search);
+      const variant = this.children.get(p.key);
 
-    for (const [key, variant] of this.variants.entries()) {
-      let selector: string | undefined = undefined;
+      console.log(variant);
 
-      if (args) {
-        selector = args[key as string] as string;
-      } else if (variant.has("default")) {
-        selector = variant.get("default") as string;
-      }
-
-      if (selector) {
-        const value = variant.compile(selector);
-        if (value) {
-          classes.push(value);
-        }
+      if (variant) {
+        matches.push(variant.compile(p.children.join(".")));
       }
     }
 
-    return classes.join(" ");
+    return new PackageResult(matches);
+  }
+
+  search(key: string) {
+    const [pkg, ...rest] = key.split(".");
+    return this.children.get(pkg)?.compile(rest.join("."));
+  }
+}
+
+export class PackageResult {
+  public value: VariantResult;
+
+  constructor(value: VariantResult) {
+    this.value = value;
+  }
+
+  get length() {
+    if (Array.isArray(this.value)) {
+      return this.value.length;
+    }
+    return 1;
+  }
+
+  toString() {
+    if (Array.isArray(this.value)) {
+      return this.value.flatMap((v) => v.toString()).join(" ");
+    }
+    return this.value;
   }
 }

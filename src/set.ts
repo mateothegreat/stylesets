@@ -1,19 +1,27 @@
+import { HierarchicalContainer } from "@mateothegreat/ts-kit";
 import { Package } from "./package";
 import type { VariantValue } from "./variant";
 
-export class VariantSet<
-  T extends Record<string, Record<string, Record<string, VariantValue>>> = Record<
+/**
+ * A StyleSet is a collection of packages.
+ *
+ * @example
+ */
+export class StyleSet<
+  T extends Record<
     string,
     Record<string, Record<string, VariantValue>>
-  >
+  > = Record<string, Record<string, Record<string, VariantValue>>>
 > {
-  packages = new Map<string, Package>();
+  container: HierarchicalContainer<Package>;
 
   constructor(obj: T) {
+    this.container = new HierarchicalContainer<Package>();
     for (const key in obj) {
-      this.packages.set(key, new Package(obj[key]));
+      this.container.add(null, new Package(obj[key]));
     }
   }
+
   /**
    * Compiles the selected variant options from all packages by joining their
    * compiled class values into a single string.
@@ -46,10 +54,12 @@ export class VariantSet<
    * with its corresponding arguments, and joins all resulting class strings with spaces.
    * Empty or undefined compilation results are filtered out automatically.
    */
-  compile(args?: Partial<Record<keyof T, Partial<Record<string, string>>>>): string {
+  compile(
+    args?: Partial<Record<keyof T, Partial<Record<string, string>>>>
+  ): string {
     const classes: VariantValue[] = [];
 
-    for (const [key, pkg] of this.packages.entries()) {
+    for (const [key, pkg] of this.children.entries()) {
       const value = pkg.compile(args?.[key as keyof T]);
 
       if (value) {
@@ -59,4 +69,6 @@ export class VariantSet<
 
     return classes.join(" ");
   }
+
+  search(key: string) {}
 }

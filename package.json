@@ -2,6 +2,7 @@
   "name": "@mateothegreat/stylesets",
   "version": "0.0.0",
   "type": "commonjs",
+  "main": "dist/index.ts",
   "description": "stylesets",
   "keywords": [],
   "author": {
@@ -9,10 +10,11 @@
     "email": "matthew@matthewdavis.io"
   },
   "exports": {
-    ".": "./index.ts"
+    ".": "./dist/index.ts"
   },
   "scripts": {
-    "build": "rm -rf dist && npm version from-git && cp -r src dist && cp package.json dist",
+    "build": "rm -rf dist && cp -r src dist && cp package.json dist",
+    "release": "rm -rf dist && npm version from-git && cp -r src dist && cp package.json dist",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "dev:sync": "npm run build && npm link"
