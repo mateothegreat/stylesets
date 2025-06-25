@@ -60,7 +60,7 @@
 
 First, we create a `StyleSet` which contains all of our pre-defined variants and defaults:
 
-```svelte
+```ts
 import { StyleSet } from "@mateothegreat/stylesets";
 
 export const styleset = new StyleSet(
