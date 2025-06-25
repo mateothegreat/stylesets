@@ -19,13 +19,13 @@
 export type VariantValue = string | string[];
 
 export class VariantResult {
-  public value: VariantValue;
+  public value: VariantValue[] = [];
 
-  constructor(value: VariantValue) {
+  constructor(value: VariantValue | VariantValue[]) {
     if (Array.isArray(value)) {
       this.value = value;
     } else {
-      this.value = value.split(" ");
+      this.value = [value];
     }
   }
 
@@ -58,11 +58,11 @@ export class VariantResult {
  * ```
  */
 export class Variant {
-  children = new Map<string, VariantValue>();
+  variants = new Map<string, VariantValue>();
 
   constructor(obj: Record<string, VariantValue>) {
     for (const key in obj) {
-      this.children.set(key, obj[key]);
+      this.variants.set(key, obj[key]);
     }
   }
 
@@ -71,8 +71,8 @@ export class Variant {
      * `key` did not reference a valid variant, so we need to check if we
      * can use a default.
      */
-    if (this.children.has("default")) {
-      const value = this.children.get("default");
+    if (this.variants.has("default")) {
+      const value = this.variants.get("default");
 
       /**
        * The default value is a string, but it may be a key to another variant.
@@ -81,8 +81,8 @@ export class Variant {
        * If it is not, we need to return the value of the default variant.
        */
       if (typeof value === "string") {
-        if (this.children.has(value)) {
-          return new VariantResult(this.children.get(value));
+        if (this.variants.has(value)) {
+          return new VariantResult(this.variants.get(value));
         }
 
         /**
@@ -92,5 +92,13 @@ export class Variant {
         return new VariantResult(value);
       }
     }
+
+    return new VariantResult(this.variants.get(key));
+  }
+
+  toString() {
+    return Array.from(this.variants.values())
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .join(" ");
   }
 }

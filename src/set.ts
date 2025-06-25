@@ -1,74 +1,132 @@
 import { HierarchicalContainer } from "@mateothegreat/ts-kit";
 import { Package } from "./package";
-import type { VariantValue } from "./variant";
+import type { TypeSchema } from "./types/types";
+import { identify } from "./util";
+import { VariantResult, type VariantValue } from "./variant";
 
 /**
  * A StyleSet is a collection of packages.
  *
  * @example
+ * ```ts
+ * const styleset = new StyleSet({
+ *   fields: [
+ *     {
+ *       name: "size",
+ *       values: ["sm", "md", "lg"],
+ *       required: true
+ *     }
+ *   ]},
+ *   {
+ *     packageOne: {
+ *       variantA: {
+ *         variation1: ["a", "b"],
+ *         variation2: "c"
+ *       },
+ *       variantB: {
+ *         variation2: "d",
+ *         variation3: ["e"]
+ *       }
+ *     },
+ *     packageTwo: {
+ *       variantZ: {
+ *         variation3: ["f", "g", "h"],
+ *         variation4: "i"
+ *       }
+ *     }
+ *   }
+ * });
+ * ```
  */
 export class StyleSet<
-  T extends Record<
+  T extends Record<string, Record<string, Record<string, VariantValue>>> = Record<
     string,
     Record<string, Record<string, VariantValue>>
-  > = Record<string, Record<string, Record<string, VariantValue>>>
+  >
 > {
+  schema: TypeSchema;
   container: HierarchicalContainer<Package>;
 
-  constructor(obj: T) {
+  constructor(schema: TypeSchema, obj: T) {
+    this.schema = schema;
     this.container = new HierarchicalContainer<Package>();
     for (const key in obj) {
-      this.container.add(null, new Package(obj[key]));
+      this.container.addChild(key, new Package(obj[key]));
     }
   }
 
   /**
-   * Compiles the selected variant options from all packages by joining their
-   * compiled class values into a single string.
+   * Searches for a variant using dot-notation path.
+   * Path format: "package.variant.size" where:
+   * - package: the package name (e.g., "outline", "filled")
+   * - variant: the variant name (e.g., "size", "color")
+   * - size: the variant key (e.g., "sm", "md", "lg")
    *
-   * @param args - An object mapping package names to their variant selection arguments.
-   *               Each package receives its corresponding argument object for compilation.
-   *               If a package is not specified in `args`, it will use its default behavior.
-   *
-   * @example
-   * ```ts
-   * const variantSet = new VariantSet({
-   *   outline: new Package({
-   *     size: { sm: "small", lg: "large", default: "sm" },
-   *     color: { red: "text-red", blue: "text-blue" }
-   *   }),
-   *   filled: new Package({
-   *     size: { sm: "small-filled", lg: "large-filled" }
-   *   })
-   * });
-   *
-   * variantSet.compile({
-   *   outline: { size: "lg", color: "red" },
-   *   filled: { size: "sm" }
-   * });
-   * // => "large text-red small-filled"
-   * ```
-   *
-   * @remarks
-   * This method iterates through all packages in the set, compiles each package
-   * with its corresponding arguments, and joins all resulting class strings with spaces.
-   * Empty or undefined compilation results are filtered out automatically.
+   * @param searchPath A dot-separated path string like "outline.size.md"
+   * @returns The compiled variant result or null if not found
    */
-  compile(
-    args?: Partial<Record<keyof T, Partial<Record<string, string>>>>
-  ): string {
-    const classes: VariantValue[] = [];
+  search(...paths: string[]): VariantResult | null {
+    const variations: (string | string[])[] = [];
 
-    for (const [key, pkg] of this.children.entries()) {
-      const value = pkg.compile(args?.[key as keyof T]);
+    /**
+     * We're going to start by searching for the package(s) and then the
+     * variant(s) and then the variation(s).
+     */
+    for (const path of paths) {
+      const identifiers = identify(path);
+      const packageContainer = this.findPackageByName(identifiers.package);
 
-      if (value) {
-        classes.push(value);
+      if (!packageContainer) {
+        console.warn(`Package "${identifiers.package}" not found`);
+        return null;
       }
+
+      if (identifiers.variation === null || identifiers.variation === "*") {
+        variations.push(...Array.from(packageContainer.value.variants.values()).flatMap((v) => v.toString()));
+        continue;
+      }
+
+      const variant = packageContainer.value.search(identifiers.getFullString());
+
+      if (!variant) {
+        return null;
+      }
+
+      variations.push(variant.toString());
     }
 
-    return classes.join(" ");
+    return new VariantResult(variations.flatMap((v) => v));
   }
 
-  search(key: string) {}
+  /**
+   * Helper method to find a package by name.
+   */
+  private findPackageByName(packageName: string): HierarchicalContainer<Package> | null {
+    for (const child of this.container.children) {
+      const childPackageName = this.getPackageName(child);
+      if (childPackageName === packageName) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Helper method to get the package name from a container.
+   * You'll need to customize this based on how you store package names.
+   */
+  private getPackageName(packageContainer: HierarchicalContainer<Package>): string {
+    // This is a placeholder - you'll need to implement based on your data structure
+    // For now, assuming you might store the name as a property
+    const packageValue = packageContainer.value as any;
+
+    if (packageValue.name) {
+      return packageValue.name;
+    }
+    if (packageValue.key) {
+      return packageValue.key;
+    }
+
+    return packageContainer.id;
+  }
 }

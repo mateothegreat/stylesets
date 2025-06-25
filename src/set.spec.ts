@@ -1,76 +1,64 @@
-import { test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { StyleSet } from "./set";
+import type { Schema } from "./types/types";
 
-test("defaults", () => {
-  const styleset = new StyleSet({
-    sm: {
-      root: {
-        outline: [
-          "border",
-          "border-[color:var(--color-invert-light,theme(colors.gray.900))]",
-          "dark:border-[color:var(--color-invert-dark,var(--border))]",
-          "rounded-md",
-        ],
-      },
+const schema: Schema<
+  [
+    {
+      name: "size";
+      values: readonly ["sm", "md", "lg"];
+      required: true;
+    }
+  ]
+> = {
+  fields: [
+    {
+      name: "size",
+      values: ["sm", "md", "lg"],
+      required: true
+    }
+  ]
+};
+
+const styleset = new StyleSet(schema, {
+  globals: {
+    size: {
+      values: ["sm", "md", "lg"]
+    }
+  },
+  packageOne: {
+    variantA: {
+      variation1: ["a", "b"],
+      variation2: "c"
     },
-  });
-  console.log(styleset.search("sm.root.outline"));
-  // expect(styleset.packages.get("sm").compile("root")).toHaveLength(1);
-
-  // expect(styleset.packages.get("outline").compile()).toBe("");
-  // expect(styleset.packages.get("outline").compile("")).toBe("");
-  // expect(styleset.packages.get("outline").compile("border")).toBe("small");
-  // expect(styleset.packages.get("outline").compile("border", "")).toBe("small");
-  // expect(styleset.packages.get("outline").compile("border", "spacing")).toBe(
-  //   "small custom"
-  // );
-  // expect(
-  //   styleset.packages.get("outline").compile("border.sm", "spacing.bad")
-  // ).toBe("small custom");
-
-  // expect(styleset.compile()).toBe("small custom");
-  // expect(styleset.compile({ outline: { exists: "foo" } })).toBe("small");
-  // expect(styleset.compile({ outline: { bad: "404" } })).toBe("");
-  // expect(styleset.compile({ outline: null })).toBe("custom");
-  // expect(styleset.compile({ outline: { doesNotExist: null } })).toBe("");
-  // expect(styleset.compile({ outline: { doesNotExist: "foo" } })).toBe("custom");
+    variantB: {
+      variation2: "d",
+      variation3: ["e"]
+    }
+  },
+  packageTwo: {
+    variantA: {
+      variation3: ["f", "g", "h"],
+      variation4: "i"
+    }
+  }
 });
 
-// test("defaults", () => {
-//   const styleset = new StyleSet({
-//     outline: {
-//       border: {
-//         sm: ["a", "b"],
-//         default: "sm",
-//       },
-//       spacing: {
-//         sm: "foo bar",
-//         default: "c d",
-//       },
-//     },
-//   });
-
-//   expect(
-//     styleset.packages.get("outline").compile("border", "spacing")
-//   ).toHaveLength(2);
-//   expect(
-//     styleset.packages.get("outline").compile("border", "spacing").toString()
-//   ).toBe("a b c d");
-//   // expect(styleset.packages.get("outline").compile()).toBe("");
-//   // expect(styleset.packages.get("outline").compile("")).toBe("");
-//   // expect(styleset.packages.get("outline").compile("border")).toBe("small");
-//   // expect(styleset.packages.get("outline").compile("border", "")).toBe("small");
-//   // expect(styleset.packages.get("outline").compile("border", "spacing")).toBe(
-//   //   "small custom"
-//   // );
-//   // expect(
-//   //   styleset.packages.get("outline").compile("border.sm", "spacing.bad")
-//   // ).toBe("small custom");
-
-//   // expect(styleset.compile()).toBe("small custom");
-//   // expect(styleset.compile({ outline: { exists: "foo" } })).toBe("small");
-//   // expect(styleset.compile({ outline: { bad: "404" } })).toBe("");
-//   // expect(styleset.compile({ outline: null })).toBe("custom");
-//   // expect(styleset.compile({ outline: { doesNotExist: null } })).toBe("");
-//   // expect(styleset.compile({ outline: { doesNotExist: "foo" } })).toBe("custom");
-// });
+describe.each([
+  {
+    args: "packageOne.variantA.variation1",
+    expected: "a b"
+  },
+  {
+    args: "packageOne.variantA.*",
+    expected: "a b c d e"
+  },
+  {
+    args: "packageOne.variantA.variation2",
+    expected: "c"
+  }
+])("StyleSet.search($args) => $expected", ({ args, expected }) => {
+  test("search", () => {
+    expect(styleset.search(args)?.toString()).toBe(expected);
+  });
+});

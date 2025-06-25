@@ -1,5 +1,4 @@
-import { HierarchicalContainer } from "@mateothegreat/ts-kit";
-import { path } from "./util";
+import { identify } from "./util";
 import { Variant, VariantResult, type VariantValue } from "./variant";
 
 /**
@@ -31,78 +30,54 @@ import { Variant, VariantResult, type VariantValue } from "./variant";
  * ```
  */
 export class Package<
-  T extends Record<string, Record<string, VariantValue>> = Record<
-    string,
-    Record<string, VariantValue>
-  >
+  T extends Record<string, Record<string, VariantValue>> = Record<string, Record<string, VariantValue>>
 > {
-  container: HierarchicalContainer<Variant>;
+  variants: Map<string, Variant>;
 
   constructor(v: T) {
-    this.container = new HierarchicalContainer<Variant>();
+    this.variants = new Map<string, Variant>();
     for (const key in v) {
-      this.container.add(null, new Variant(v[key]));
+      this.variants.set(key, new Variant(v[key]));
     }
   }
 
   /**
-   * Compiles the selected variant options by joining all class values
-   * into a single string.
-   *
-   * @param args - An object mapping variant names to their selected keys.
-   *               Only keys present in the package's variants are allowed.
-   *               If a variant is not specified in `args`, its "default" key will be used if present.
-   *
-   * @example
-   * ```ts
-   * const variants = new Package({
-   *   withDefault: {
-   *     sm: "small",
-   *     default: "sm"
-   *   },
-   *   withoutDefault: {
-   *     sm: "small"
-   *   },
-   *   arrayWithDefault: {
-   *     sm: ["small", "medium"],
-   *     default: "sm"
-   *   },
-   *   arrayWithoutDefault: {
-   *     sm: ["small", "medium"]
-   *   }
-   * });
-   *
-   * package.compile({ withDefault: "sm" });
-   * // => "small"
-   *
-   * package.compile({ arrayWithoutDefault: "sm" });
-   * // => "small medium"
-   * ```
-   *
-   * @remarks
-   * This method iterates over all variants in the package, determines the correct key
-   * to use for each (from `args` or the variant's "default"), and compiles their values
-   * into a single space-separated string.
+   * Helper method to check if a variant matches a given name.
    */
-  compile(...packageNames: string[]): PackageResult {
-    const matches: VariantValue[] = [];
-    for (const search of packageNames) {
-      const p = path(search);
-      const variant = this.children.get(p.key);
+  #variantMatchesName(variant: Variant, name: string): boolean {
+    // Customize this based on how your variants store their names
+    // This might involve checking keys in the variant's children Map
 
-      console.log(variant);
-
-      if (variant) {
-        matches.push(variant.compile(p.children.join(".")));
-      }
+    // Check if the variant has this key
+    if (variant.variants.has(name)) {
+      return true;
     }
 
-    return new PackageResult(matches);
+    // Or check if the variant has a name property
+    const variantObj = variant as any;
+    if (variantObj.name === name || variantObj.key === name) {
+      return true;
+    }
+
+    return false;
   }
 
-  search(key: string) {
-    const [pkg, ...rest] = key.split(".");
-    return this.children.get(pkg)?.compile(rest.join("."));
+  search(...identifiers: string[]): VariantResult | null {
+    const variations: (string | string[])[] = [];
+
+    for (const identifier of identifiers) {
+      const path = identify(identifier);
+      const variant = this.variants.get(path.variant);
+
+      if (path.variation === null || path.variation === "*") {
+        variations.push(...Array.from(variant.variants.values()).flatMap((v) => v));
+        return new VariantResult(variations);
+      }
+
+      variations.push(variant.variants.get(path.variation));
+    }
+
+    return new VariantResult(variations.flatMap((v) => v));
   }
 }
 

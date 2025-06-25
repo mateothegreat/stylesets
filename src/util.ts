@@ -1,71 +1,63 @@
-import { Package } from "./package";
-import { StyleSet } from "./set";
-import { Variant } from "./variant";
-
 export type Unset = undefined | null;
 export const unset: Unset = null;
 
-export type Searchable =
-  | Pick<StyleSet, "children">
-  | Pick<Package, "children">
-  | Pick<Variant, "children">;
-export type RecursiveArray<T> = T | RecursiveArray<T>[];
+/**
+ * PathParser provides utilities for parsing dot-notation paths used in style variant lookups.
+ * Handles paths in formats like "variant", "variant.variation", or "package.variant.variation".
+ */
+export class Identifier {
+  public package: string | null;
+  public variant: string;
+  public variation: string | null;
 
-export const path = (path: string) => {
-  const [key, ...rest] = path.split(".");
-  return {
-    key,
-    children: rest,
-    rest: rest.join("."),
-  };
-};
+  constructor(path: string) {
+    const parts = path.split(".");
 
-export const search = (
-  tree: RecursiveArray<Searchable>,
-  key: string,
-  value: string,
-  target: Searchable,
-  prop: string
-) => {
-  // Handle array of searchables by recursively searching each element
-  if (Array.isArray(tree)) {
-    for (const item of tree) {
-      const result = search(item, key, value, target, prop);
-      if (result !== unset) {
-        return result;
-      }
+    if (!parts) {
+      throw new Error(`invalid path: ${path}`);
     }
-    return unset;
-  }
 
-  // Base case: we've reached a single searchable item
-  const searchable = tree as Searchable;
-
-  // If this is our target type, perform the search
-  if (searchable instanceof target.constructor) {
-    if (searchable instanceof StyleSet) {
-      return searchable.search(key);
-    } else if (searchable instanceof Package) {
-      return searchable.search(key);
-    } else if (searchable instanceof Variant) {
-      return searchable.compile(key);
+    if (parts.length === 1) {
+      this.package = null;
+      this.variant = parts[0];
+      this.variation = null;
+    } else if (parts.length === 2) {
+      this.package = null;
+      this.variant = parts[0];
+      this.variation = parts[1];
+    } else {
+      this.package = parts[0];
+      this.variant = parts[1];
+      this.variation = parts[2];
     }
   }
 
-  // If this searchable has a search method or property we can traverse
-  if (searchable instanceof StyleSet && searchable.children) {
-    const pathInfo = path(key);
-    const childSearchable = searchable.children.get(pathInfo.key);
-    if (childSearchable && pathInfo.children.length > 0) {
-      return search(childSearchable, pathInfo.rest, value, target, prop);
-    }
-  } else if (searchable instanceof Package && searchable.children) {
-    const pathInfo = path(key);
-    const childSearchable = searchable.children.get(pathInfo.key);
-    if (childSearchable && pathInfo.children.length > 0) {
-      return search(childSearchable, pathInfo.rest, value, target, prop);
-    }
+  /**
+   * Gets the variant portion of the path.
+   */
+  getVariantString(): string {
+    return this.variant;
   }
 
-  return unset;
+  /**
+   * Gets the full path as a reconstructed string.
+   */
+  getFullString(): string {
+    const parts = [];
+    if (this.package) parts.push(this.package);
+    parts.push(this.variant);
+    if (this.variation) parts.push(this.variation);
+    return parts.join(".");
+  }
+
+  /**
+   * Gets the variation portion of the path.
+   */
+  getVariation(): string | null {
+    return this.variation;
+  }
+}
+
+export const identify = (search: string): Identifier => {
+  return new Identifier(search);
 };
